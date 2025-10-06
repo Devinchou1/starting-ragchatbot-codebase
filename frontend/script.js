@@ -5,7 +5,7 @@ const API_URL = '/api';
 let currentSessionId = null;
 
 // DOM elements
-let chatMessages, chatInput, sendButton, totalCourses, courseTitles, newChatBtn;
+let chatMessages, chatInput, sendButton, totalCourses, courseTitles, newChatBtn, themeToggle;
 
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
@@ -16,8 +16,10 @@ document.addEventListener('DOMContentLoaded', () => {
     totalCourses = document.getElementById('totalCourses');
     courseTitles = document.getElementById('courseTitles');
     newChatBtn = document.getElementById('newChatBtn');
+    themeToggle = document.getElementById('themeToggle');
 
     setupEventListeners();
+    initializeTheme();
     createNewSession();
     loadCourseStats();
 });
@@ -33,6 +35,15 @@ function setupEventListeners() {
     // New chat button
     newChatBtn.addEventListener('click', createNewSession);
 
+    // Theme toggle button
+    themeToggle.addEventListener('click', toggleTheme);
+    themeToggle.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            toggleTheme();
+        }
+    });
+
     // Suggested questions
     document.querySelectorAll('.suggested-item').forEach(button => {
         button.addEventListener('click', (e) => {
@@ -41,6 +52,27 @@ function setupEventListeners() {
             sendMessage();
         });
     });
+}
+
+// Theme Management
+function initializeTheme() {
+    const savedTheme = localStorage.getItem('theme');
+    if (savedTheme === 'light') {
+        document.documentElement.classList.add('light-theme');
+    }
+}
+
+function toggleTheme() {
+    const root = document.documentElement;
+    const isLight = root.classList.contains('light-theme');
+
+    if (isLight) {
+        root.classList.remove('light-theme');
+        localStorage.setItem('theme', 'dark');
+    } else {
+        root.classList.add('light-theme');
+        localStorage.setItem('theme', 'light');
+    }
 }
 
 

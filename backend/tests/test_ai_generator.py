@@ -1,14 +1,16 @@
-import pytest
-from unittest.mock import Mock, MagicMock, patch
-import sys
 import os
+import sys
+from unittest.mock import Mock
+
+import pytest
 
 # Add parent directory to path for imports
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from ai_generator import AIGenerator
 
 
+@pytest.mark.unit
 class TestSequentialToolCalling:
     """Tests for multi-round sequential tool calling behavior"""
 
@@ -44,9 +46,7 @@ class TestSequentialToolCalling:
         mock_client.messages.create.return_value = mock_response
 
         result = ai_generator.generate_response(
-            query="What is Python?",
-            tools=[{"name": "search"}],
-            tool_manager=Mock()
+            query="What is Python?", tools=[{"name": "search"}], tool_manager=Mock()
         )
 
         assert result == "Direct answer"
@@ -76,9 +76,7 @@ class TestSequentialToolCalling:
         mock_client.messages.create.side_effect = [tool_use_response, final_response]
 
         result = ai_generator.generate_response(
-            query="Search for something",
-            tools=[{"name": "search"}],
-            tool_manager=mock_tool_manager
+            query="Search for something", tools=[{"name": "search"}], tool_manager=mock_tool_manager
         )
 
         assert result == "Final answer"
@@ -119,9 +117,7 @@ class TestSequentialToolCalling:
         mock_client.messages.create.side_effect = [tool_use_1, tool_use_2, final]
 
         result = ai_generator.generate_response(
-            query="Complex query",
-            tools=[{"name": "search"}],
-            tool_manager=mock_tool_manager
+            query="Complex query", tools=[{"name": "search"}], tool_manager=mock_tool_manager
         )
 
         assert result == "Comprehensive answer"
@@ -152,13 +148,11 @@ class TestSequentialToolCalling:
         mock_client.messages.create.side_effect = [
             tool_use_response,  # Round 1
             tool_use_response,  # Round 2
-            final_response      # Final call without tools
+            final_response,  # Final call without tools
         ]
 
         result = ai_generator.generate_response(
-            query="Query",
-            tools=[{"name": "search"}],
-            tool_manager=mock_tool_manager
+            query="Query", tools=[{"name": "search"}], tool_manager=mock_tool_manager
         )
 
         assert result == "Forced final answer"
@@ -195,9 +189,7 @@ class TestSequentialToolCalling:
         mock_client.messages.create.side_effect = [tool_use, final]
 
         result = ai_generator.generate_response(
-            query="Query",
-            tools=[{"name": "test"}],
-            tool_manager=mock_tool_manager
+            query="Query", tools=[{"name": "test"}], tool_manager=mock_tool_manager
         )
 
         assert result == "Error explanation"
@@ -209,7 +201,7 @@ class TestSequentialToolCalling:
         # Last message should contain error
         error_msg = messages[-1]["content"][0]
         assert error_msg["type"] == "tool_result"
-        assert error_msg["is_error"] == True
+        assert error_msg["is_error"]
         assert "Tool failed" in error_msg["content"]
 
     # === Test 6: Message History Accumulation ===
@@ -235,9 +227,7 @@ class TestSequentialToolCalling:
         mock_client.messages.create.side_effect = [tool_use, final]
 
         ai_generator.generate_response(
-            query="Test query",
-            tools=[{"name": "search"}],
-            tool_manager=mock_tool_manager
+            query="Test query", tools=[{"name": "search"}], tool_manager=mock_tool_manager
         )
 
         # Check second API call's messages
@@ -252,7 +242,9 @@ class TestSequentialToolCalling:
         assert messages[2]["content"][0]["type"] == "tool_result"
 
     # === Test 7: Natural Termination Before Limit ===
-    def test_natural_termination_before_max_rounds(self, ai_generator, mock_client, mock_tool_manager):
+    def test_natural_termination_before_max_rounds(
+        self, ai_generator, mock_client, mock_tool_manager
+    ):
         """Test that Claude can answer after 1 round without using full budget"""
         # Round 1: Tool use
         tool_use = Mock()
@@ -275,9 +267,7 @@ class TestSequentialToolCalling:
         mock_client.messages.create.side_effect = [tool_use, final]
 
         result = ai_generator.generate_response(
-            query="Simple query",
-            tools=[{"name": "search"}],
-            tool_manager=mock_tool_manager
+            query="Simple query", tools=[{"name": "search"}], tool_manager=mock_tool_manager
         )
 
         assert result == "Answer after 1 tool call"

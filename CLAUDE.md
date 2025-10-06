@@ -30,6 +30,30 @@ uv run uvicorn app:app --reload --port 8000
 
 The application runs on `http://localhost:8000` with API docs at `http://localhost:8000/docs`.
 
+### Code Quality
+```bash
+# Install dev dependencies (includes black, ruff, mypy)
+uv sync --extra dev
+
+# Auto-format and fix code
+./format.sh
+
+# Run quality checks (formatting, linting, type checking)
+./quality.sh
+
+# Individual commands
+uv run black backend/              # Format code
+uv run black --check backend/      # Check formatting without changes
+uv run ruff check backend/         # Lint code
+uv run ruff check --fix backend/   # Auto-fix linting issues
+uv run mypy backend/               # Type check
+```
+
+**Quality Tools:**
+- **Black**: Code formatter (line length: 100)
+- **Ruff**: Fast linter with auto-fix (replaces flake8, isort, pyupgrade)
+- **Mypy**: Static type checker
+
 ### Prerequisites
 - Python 3.13+
 - uv package manager

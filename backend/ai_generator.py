@@ -1,9 +1,9 @@
 import anthropic
-from typing import List, Optional, Dict, Any
+
 
 class AIGenerator:
     """Handles interactions with Anthropic's Claude API for generating responses"""
-    
+
     # Static system prompt to avoid rebuilding on each call
     SYSTEM_PROMPT = """ You are an AI assistant specialized in course materials and educational content with access to comprehensive search and outline tools.
 
@@ -37,23 +37,22 @@ All responses must be:
 4. **Example-supported** - Include relevant examples when they aid understanding
 Provide only the direct answer to what was asked.
 """
-    
+
     def __init__(self, api_key: str, model: str, max_tool_rounds: int = 2):
         self.client = anthropic.Anthropic(api_key=api_key)
         self.model = model
         self.max_tool_rounds = max_tool_rounds
-        
+
         # Pre-build base API parameters
-        self.base_params = {
-            "model": self.model,
-            "temperature": 0,
-            "max_tokens": 800
-        }
-    
-    def generate_response(self, query: str,
-                         conversation_history: Optional[str] = None,
-                         tools: Optional[List] = None,
-                         tool_manager=None) -> str:
+        self.base_params = {"model": self.model, "temperature": 0, "max_tokens": 800}
+
+    def generate_response(
+        self,
+        query: str,
+        conversation_history: str | None = None,
+        tools: list | None = None,
+        tool_manager=None,
+    ) -> str:
         """
         Generate AI response with optional sequential tool usage and conversation context.
 
@@ -83,10 +82,7 @@ Provide only the direct answer to what was asked.
         messages = [{"role": "user", "content": query}]
 
         # Prepare base API call parameters
-        api_params = {
-            **self.base_params,
-            "system": system_content
-        }
+        api_params = {**self.base_params, "system": system_content}
 
         # Add tools if available
         if tools:
@@ -94,26 +90,18 @@ Provide only the direct answer to what was asked.
             api_params["tool_choice"] = {"type": "auto"}
 
         # Sequential tool calling loop
-        for round_num in range(1, self.max_tool_rounds + 1):
+        for _round_num in range(1, self.max_tool_rounds + 1):
             # Make API call with current message history
-            response = self.client.messages.create(
-                **api_params,
-                messages=messages
-            )
+            response = self.client.messages.create(**api_params, messages=messages)
 
             # Check if Claude wants to use tools
             if response.stop_reason == "tool_use" and tool_manager:
                 # Execute tools and accumulate results in messages
-                has_error = self._execute_and_accumulate_tools(
-                    response, messages, tool_manager
-                )
+                has_error = self._execute_and_accumulate_tools(response, messages, tool_manager)
 
                 # If tool error occurred, make final call to let Claude respond to error
                 if has_error:
-                    final_response = self.client.messages.create(
-                        **api_params,
-                        messages=messages
-                    )
+                    final_response = self.client.messages.create(**api_params, messages=messages)
                     return self._extract_text_response(final_response)
 
                 # Continue to next round if within MAX_TOOL_ROUNDS
@@ -128,14 +116,14 @@ Provide only the direct answer to what was asked.
         final_params = {
             **self.base_params,
             "messages": messages,
-            "system": system_content
+            "system": system_content,
             # Note: No tools parameter
         }
 
         final_response = self.client.messages.create(**final_params)
         return self._extract_text_response(final_response)
 
-    def _execute_and_accumulate_tools(self, response, messages: List[Dict], tool_manager) -> bool:
+    def _execute_and_accumulate_tools(self, response, messages: list[dict], tool_manager) -> bool:
         """
         Execute all tool calls from response and accumulate results in messages array.
 
@@ -148,10 +136,9 @@ Provide only the direct answer to what was asked.
             bool: True if any tool execution had an error, False otherwise
         """
         # Accumulate assistant's tool use message
-        messages.append({
-            "role": "assistant",
-            "content": response.content  # Contains tool_use blocks
-        })
+        messages.append(
+            {"role": "assistant", "content": response.content}  # Contains tool_use blocks
+        )
 
         # Execute all requested tools
         tool_results = []
@@ -161,31 +148,31 @@ Provide only the direct answer to what was asked.
             if content_block.type == "tool_use":
                 try:
                     tool_result = tool_manager.execute_tool(
-                        content_block.name,
-                        **content_block.input
+                        content_block.name, **content_block.input
                     )
 
-                    tool_results.append({
-                        "type": "tool_result",
-                        "tool_use_id": content_block.id,
-                        "content": tool_result
-                    })
+                    tool_results.append(
+                        {
+                            "type": "tool_result",
+                            "tool_use_id": content_block.id,
+                            "content": tool_result,
+                        }
+                    )
 
                 except Exception as e:
                     # Tool execution failed - return error to Claude
-                    tool_results.append({
-                        "type": "tool_result",
-                        "tool_use_id": content_block.id,
-                        "content": f"Error executing tool: {str(e)}",
-                        "is_error": True
-                    })
+                    tool_results.append(
+                        {
+                            "type": "tool_result",
+                            "tool_use_id": content_block.id,
+                            "content": f"Error executing tool: {str(e)}",
+                            "is_error": True,
+                        }
+                    )
                     has_error = True
 
         # Accumulate tool results
-        messages.append({
-            "role": "user",
-            "content": tool_results
-        })
+        messages.append({"role": "user", "content": tool_results})
 
         return has_error
 
